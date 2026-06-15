@@ -1,0 +1,7 @@
+{
+    "name": "@crm-starter-kit/ui",
+    "private": true,
+    "peerDependencies": {
+        "vue": "^3.0.0"
+    }
+}

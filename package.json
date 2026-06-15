@@ -1,0 +1,13 @@
+{
+  "name": "crm-starter-kit",
+  "version": "1.0.0",
+  "author": "",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter @crm-starter-kit/web dev",
+    "dev:api": "pnpm --filter @crm-starter-kit/api dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format"
+  }
+}
