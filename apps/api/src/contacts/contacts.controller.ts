@@ -21,8 +21,8 @@ export class ContactsController {
         // Read query parameter from the URL
         return this.contactsService.findAll({
             q, 
-            pageNumber, 
-            limitNumber
+            page, 
+            limit,
         });
     }
 
