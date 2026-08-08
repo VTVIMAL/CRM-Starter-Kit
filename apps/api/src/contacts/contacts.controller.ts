@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, Query } from "@nestjs/common";
+import { Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Query } from "@nestjs/common";
 import { ContactsService } from "./contacts.service";
 
 @Controller('contacts')
@@ -11,9 +11,19 @@ export class ContactsController {
     // }
 
     @Get()
-    findAll(@Query('q') q?: string) {
+    findAll(
+        @Query('q') q?: string, 
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page? : number, // if no page found use 1
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit?: number, // if no limit found use 10
+    ) {
+
+
         // Read query parameter from the URL
-        return this.contactsService.findAll(q);
+        return this.contactsService.findAll({
+            q, 
+            pageNumber, 
+            limitNumber
+        });
     }
 
     //  CONTROLLER receives the string from the URL

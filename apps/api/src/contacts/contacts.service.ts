@@ -6,39 +6,66 @@ export class ContactsService {
 
     constructor( private readonly prisma: PrismaService ) {}
 
-    // async findAll() {
-    //     return this.prisma.contact.findMany();
-    // }
-
-    async findAll(q?: string) {
-
+    async findAll({
+        q, 
+        page = 1,
+        limit = 10,
+    }: {
+        q?: string;
+        page?: number;
+        limit?: number;
+    }) {
         const search = q?.trim(); // remove whitespaces
+        // calculate how many records to skip based on the page and limit 
+        const skip = (page - 1) * limit;
 
-        if(!search) {
-            // return all contacts if not search term is provided.
-            return this.prisma.contact.findMany();
+        // search filter for only when a search term exists 
+        const where = search
+        ? {
+            OR: [
+                {
+                    firstName: {
+                        contains: search,
+                        mode: 'insensitive' as const,
+                    },
+                },
+                {
+                    lastName: {
+                        contains: search,
+                        mode: 'insensitive' as const,
+                    },
+                },
+                {
+                    email: {
+                        contains: search, 
+                        mode: 'insensitive' as const,
+                    },
+                },
+            ],
         }
+        : undefined;
 
-        return this.prisma.contact.findMany({
-            where: { // only return rows meeting the given conditions.
-                OR: [ // if one of these conditions meet return it.
-                    {
-                        firstName: {
-                            contains: search,
-                            mode: 'insensitive'
-                        },
-                        lastName: {
-                            contains: search,
-                            mode: 'insensitive'
-                        },
-                        email: {
-                            contains: search,
-                            mode: 'insensitive'
-                        }
-                    }
-                ]
-            }
-        });
+        const [data, total] = await Promise.all([
+            this.prisma.contact.findMany({
+                where,
+                skip,
+                take: limit,
+            }),
+            this.prisma.contact.count({
+                where,
+            }),
+        ]);
+
+        // return the data 
+        return {
+            data,
+            meta: {
+                page,
+                limit, 
+                total,
+            },
+        };
+
     }
 
     // SERVICE receives a pure number
