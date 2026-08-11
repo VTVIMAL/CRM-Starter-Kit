@@ -22,6 +22,15 @@ import {
     ownedById: number;
     companyId?: number;
   };
+
+  type UpdateContactParams = {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    ownedById?: number;
+    companyId?: number | null;
+  };
   
   @Injectable()
   export class ContactsService {
@@ -136,5 +145,55 @@ import {
   
         throw error;
       }
+    }
+
+    async update(
+        id: number, 
+        data: {
+            firstName?: string;
+            lastName?: string;
+            email?: string;
+            phone?: string | null;
+            ownedById?: number;
+            companyId?: number | null;
+        },
+    ) {
+        try {
+            return await this.prisma.contact.update({
+                where: {id},
+                data,
+            });
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
+            ) {
+                throw new NotFoundException('Contact with id ${id} not found');
+            }
+
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003'
+            ) {
+                throw new BadRequestException(
+                    'Invalid ownedById or companyId. Related record does not exist.',
+                );
+            }
+
+            throw error;
+        }
+    }
+
+    async remove(id: number) {
+        try {
+            return await this.prisma.contact.delete({
+                where: { id },
+            });
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
+            ) {
+                throw new NotFoundException('Contact with id ${id} not found');
+            }
+            throw error;
+        }
     }
   }

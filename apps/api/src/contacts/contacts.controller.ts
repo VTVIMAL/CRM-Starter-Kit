@@ -2,10 +2,12 @@ import {
     Body,
     Controller,
     DefaultValuePipe,
+    Delete,
     Get, 
     Post,
     Param, 
     ParseIntPipe, 
+    Patch,
     Query 
 } from "@nestjs/common";
 import { ContactsService } from "./contacts.service";
@@ -41,6 +43,22 @@ export class ContactsController {
         return this.contactsService.findOne(id);
     }
 
+    @Patch(':id')
+    update(
+        @Param('id', ParseIntPipe) id: number,
+        @Body()
+        body: {
+            firstName?: string;
+            lastNamme?: string;
+            email?: string;
+            phone?: string;
+            ownedById?: number;
+            companyId?: number | null;
+        }
+    ) {
+        return this.contactsService.update(id, body);
+    }
+
     @Post()
     create(
         @Body()
@@ -54,5 +72,10 @@ export class ContactsController {
         },
     ){
         return this.contactsService.create(body)
+    }
+
+    @Delete(':id')
+    remove(@Param('id', ParseIntPipe) id: number) {
+        return this.contactsService.remove(id);
     }
 }
