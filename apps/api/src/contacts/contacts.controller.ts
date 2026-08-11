@@ -1,4 +1,13 @@
-import { Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Query } from "@nestjs/common";
+import { 
+    Body,
+    Controller,
+    DefaultValuePipe,
+    Get, 
+    Post,
+    Param, 
+    ParseIntPipe, 
+    Query 
+} from "@nestjs/common";
 import { ContactsService } from "./contacts.service";
 
 @Controller('contacts')
@@ -13,8 +22,6 @@ export class ContactsController {
         @Query('ownerId') ownerId?: string,
         @Query('companyId') companyId?: string,
     ) {
-
-
         // Read query parameter from the URL
         return this.contactsService.findAll({
             q, 
@@ -32,5 +39,20 @@ export class ContactsController {
     findOne(@Param("id", ParseIntPipe) id: number){
         // CONTROLLER passes a clean number to the service
         return this.contactsService.findOne(id);
+    }
+
+    @Post()
+    create(
+        @Body()
+        body: {
+            firstName: string;
+            lastName: string;
+            email: string;
+            phone?: string;
+            ownedById: number;
+            companyID?: number;
+        },
+    ){
+        return this.contactsService.create(body)
     }
 }
