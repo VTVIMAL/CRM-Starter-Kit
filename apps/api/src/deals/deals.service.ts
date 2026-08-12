@@ -237,4 +237,20 @@ import {
             throw error;
         }
     }
+
+    // async remove(id: number) {
+    //     try {
+    //         return await this.prisma.deal.delete({
+    //             where: {id},
+    //         });
+    //     } catch (error) {
+    //         if (
+    //             error instanceof Prisma.PrismaClientKnownRequestError &&
+    //             error.code === 'P2025'
+    //         ) {
+    //             throw new NotFoundException(`Deal with id ${id} not found`);
+    //         }
+    //         throw error;
+    //     }
+    // }
   }

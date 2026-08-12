@@ -191,7 +191,7 @@ import {
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
             ) {
-                throw new NotFoundException('Contact with id ${id} not found');
+                throw new NotFoundException(`Contact with id ${id} not found`);
             }
             throw error;
         }

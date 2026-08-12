@@ -2,6 +2,7 @@ import {
     Body,
     Controller,
     DefaultValuePipe,
+    Delete,
     Get,
     Param,
     ParseIntPipe,
@@ -76,4 +77,9 @@ import {
     ) {
         return this.dealsService.update(id, body)
     }
+
+    // @Delete(':id')
+    // remove(@Param('id', ParseIntPipe) id:number) {
+    //     return this.dealsService.remove(id);
+    // }
   }
