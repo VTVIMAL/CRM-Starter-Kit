@@ -174,4 +174,67 @@ import {
         throw error;
       }
     }
+
+    async update(
+        id: number,
+        data: {
+            title?: string;
+            value?: Prisma.Decimal | number | string;
+            currency?: string;
+            stage?: DealStage;
+            expectedCloseDate?: string | null;
+            ownedById?: number;
+            companyId?: number | null;
+            contactId?: number | null;
+        },
+    ) {
+        try {
+            return await this.prisma.deal.update({
+                where: { id },
+                data: {
+                    title: data.title,
+                    value: data.value,
+                    currency: data.currency,
+                    stage: data.stage,
+                    expectedCloseDate:
+                        data.expectedCloseDate === null
+                            ? null
+                            : data.expectedCloseDate
+                                ? new Date(data.expectedCloseDate)
+                                : undefined,
+                    ownedById: data.ownedById,
+                    companyId: data.companyId,
+                    contactId: data.contactId,
+                },
+                include: {
+                    ownedBy: {
+                        select: {
+                            id: true,
+                            email: true,
+                            role: true,
+                        },
+                    },
+                    company: true,
+                    contact: true,
+                },
+            });
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2025'
+            ) {
+                throw new NotFoundException(`Deal with ${id} not found`);
+            }
+
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2003'
+            ) {
+                throw new BadRequestException(
+                    'Invalid ownedById, companyId or contactId, Related record does not exist.',
+                );
+            }
+            throw error;
+        }
+    }
   }

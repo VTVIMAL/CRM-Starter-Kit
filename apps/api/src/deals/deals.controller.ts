@@ -5,6 +5,7 @@ import {
     Get,
     Param,
     ParseIntPipe,
+    Patch,
     Post,
     Query,
   } from '@nestjs/common';
@@ -56,5 +57,23 @@ import {
         },
     ) {
         return this.dealsService.create(body);
+    }
+
+    @Patch(':id')
+    update(
+        @Param('id', ParseIntPipe) id: number,
+        @Body()
+        body: {
+            title?: string;
+            value?: number | string;
+            currency?: string;
+            stage?: DealStage;
+            expectedCloseDate?: string | null;
+            ownedById?: number;
+            companyId?: number | null;
+            contactId?: number | null;
+        },
+    ) {
+        return this.dealsService.update(id, body)
     }
   }

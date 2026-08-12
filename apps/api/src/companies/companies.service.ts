@@ -99,7 +99,7 @@ export class CompaniesService {
         });
 
         if (!company) {
-            throw new NotFoundException('Company with id ${id} not found');
+            throw new NotFoundException(`Company with id ${id} not found`);
         }
 
         return company;
