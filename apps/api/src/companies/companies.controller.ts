@@ -5,10 +5,13 @@ import {
     Get,
     Param,
     ParseIntPipe,
+    Patch,
     Post,
     Query,
 } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
+import { CreateCompayDto } from './dto/create-company.dto';
+import { UpdateCompanyDto } from './dto/update-company.dto';
 
 @Controller('companies')
 export class CompaniesContoller {
@@ -35,16 +38,15 @@ export class CompaniesContoller {
     }
 
     @Post()
-    create(
-        @Body()
-        body: {
-            name: string;
-            domain?: string;
-            industry: string;
-            size?: number;
-            ownedById: number;
-        },
-    ) {
+    create(@Body() body: CreateCompayDto ) {
         return this.companiesService.create(body)
+    }
+
+    @Patch(':id')
+    update(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() body: UpdateCompanyDto,
+    ) {
+        return this.companiesService.update(id, body);
     }
 }

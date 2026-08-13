@@ -137,5 +137,50 @@ export class CompaniesService {
             throw error;
         }
     }
+
+    async update(
+        id: number,
+        data: {
+            name?: string;
+            domain?: string | null;
+            industry?: string;
+            size?: number | null;
+            ownedById?: number;
+        },
+    ) {
+        try {
+            return await this.prisma.company.update({
+                where: {id},
+                data,
+                include: {
+                    ownedBy: {
+                        select: {
+                            id: true,
+                            email: true,
+                            role: true,
+                        },
+                    },
+                },
+            });
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2025'
+            ) {
+                throw new NotFoundException(`Company with id ${id} not found`);
+            }
+
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2003'
+            ) {
+                throw new BadRequestException(
+                    'Invalid ownedById. Realted user does not exist.',
+                );
+            }
+
+            throw error;
+        }
+    }
 }
 
