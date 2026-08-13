@@ -11,6 +11,8 @@ import {
     Query 
 } from "@nestjs/common";
 import { ContactsService } from "./contacts.service";
+import { CreateContactDto } from "./dto/create-contact.dto";
+import { UpdateContactDto } from "./dto/update-contact.dto";
 
 @Controller('contacts')
 export class ContactsController {
@@ -43,35 +45,17 @@ export class ContactsController {
         return this.contactsService.findOne(id);
     }
 
+    @Post()
+    create(@Body() body: CreateContactDto){
+        return this.contactsService.create(body)
+    }
+
     @Patch(':id')
     update(
         @Param('id', ParseIntPipe) id: number,
-        @Body()
-        body: {
-            firstName?: string;
-            lastNamme?: string;
-            email?: string;
-            phone?: string;
-            ownedById?: number;
-            companyId?: number | null;
-        }
+        @Body() body: UpdateContactDto,
     ) {
         return this.contactsService.update(id, body);
-    }
-
-    @Post()
-    create(
-        @Body()
-        body: {
-            firstName: string;
-            lastName: string;
-            email: string;
-            phone?: string;
-            ownedById: number;
-            companyID?: number;
-        },
-    ){
-        return this.contactsService.create(body)
     }
 
     @Delete(':id')
