@@ -18,6 +18,9 @@ async function bootstrap() {
             whitelist: true,  // removes fields not in DTO
             forbidNonWhitelisted: true, // throws error instead of accepting extra fields
             transform: true, // helps convert values to expected types
+            transformOptions: {
+                enableImplicitConversion: true,
+            }
         }),
     );
 

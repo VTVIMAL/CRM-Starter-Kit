@@ -12,6 +12,8 @@ import {
   } from '@nestjs/common';
   import { DealStage } from '@prisma/client';
   import { DealsService } from './deals.service';
+import { CreateDealDto } from './dto/create-deal.dto';
+import { UpdateDealDto } from './dto/update-deal.dto';
 
   @Controller('deals')
   export class DealsController {
@@ -44,38 +46,16 @@ import {
     }
 
     @Post()
-    create(
-        @Body()
-        body: {
-            title: string;
-            value: number | string;
-            currency: string;
-            stage?: DealStage;
-            expectedCloseDate?: string;
-            ownedById: number;
-            companyId?: number;
-            contactId?: number;
-        },
-    ) {
+    create(@Body() body: CreateDealDto) {
         return this.dealsService.create(body);
     }
 
     @Patch(':id')
     update(
         @Param('id', ParseIntPipe) id: number,
-        @Body()
-        body: {
-            title?: string;
-            value?: number | string;
-            currency?: string;
-            stage?: DealStage;
-            expectedCloseDate?: string | null;
-            ownedById?: number;
-            companyId?: number | null;
-            contactId?: number | null;
-        },
+        @Body() body: UpdateDealDto,
     ) {
-        return this.dealsService.update(id, body)
+        return this.dealsService.update(id, body);
     }
 
     // @Delete(':id')
