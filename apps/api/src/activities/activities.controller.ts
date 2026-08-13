@@ -11,6 +11,8 @@ import {
   } from '@nestjs/common';
   import { ActivityType } from '@prisma/client';
   import { ActivitiesService } from './activities.service';
+import { CreateActivityDto } from './dto/create-activity.dto';
+import { UpdateActivityDto } from './dto/update-activity.dto';
   
   @Controller('activities')
   export class ActivitiesController {
@@ -43,34 +45,14 @@ import {
     }
   
     @Post()
-    create(
-      @Body()
-      body: {
-        type: ActivityType;
-        subject: string;
-        body?: string;
-        createdById: number;
-        contactId?: number;
-        companyId?: number;
-        dealId?: number;
-      },
-    ) {
+    create(@Body() body: CreateActivityDto) {
       return this.activitiesService.create(body);
     }
   
     @Patch(':id')
     update(
       @Param('id', ParseIntPipe) id: number,
-      @Body()
-      body: {
-        type?: ActivityType;
-        subject?: string;
-        body?: string | null;
-        createdById?: number;
-        contactId?: number | null;
-        companyId?: number | null;
-        dealId?: number | null;
-      },
+      @Body() body: UpdateActivityDto,
     ) {
       return this.activitiesService.update(id, body);
     }
