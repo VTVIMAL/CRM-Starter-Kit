@@ -5,10 +5,10 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 
-dotenv.config({
-    path: path.join(__dirname, '..', '.env'),
-    // path: path.resolve(process.cwd(), 'apps/api/.env'),
-});
+// dotenv.config({
+//     path: path.join(__dirname, '..', '.env'),
+//     // path: path.resolve(process.cwd(), 'apps/api/.env'),
+// });
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);

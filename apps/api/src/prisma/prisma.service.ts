@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {ConfigService} from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
@@ -7,9 +8,9 @@ import { Pool } from 'pg';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
 
     // when Nest creates the service, run the setup
-    constructor() {
+    constructor(private readonly configService: ConfigService) {
 
-        const connectionString = process.env.DATABASE_URL;
+        const connectionString = configService.get<string>('DATABASE_URL');
 
         // check if DATABASE_URL is present else fail 
         if (!connectionString) {
