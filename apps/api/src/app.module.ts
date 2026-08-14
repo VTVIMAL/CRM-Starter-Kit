@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
-import {ConfigModule} from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import * as Joi from 'joi';
-import { ContactsModule } from './contacts/contacts.module';
 import { HealthModule } from './health/health.module';
-import { UsersModule } from './users/users.module';
+import { ContactsModule } from './contacts/contacts.module';
 import { CompaniesModule } from './companies/companies.module';
 import { DealsModule } from './deals/deals.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ActivitiesModule } from './activities/activities.module';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -20,13 +21,14 @@ import { ActivitiesModule } from './activities/activities.module';
         JWT_SECRET: Joi.string().min(10).required(),
       }),
     }),
-    HealthModule, 
-    ContactsModule, 
-    UsersModule, 
-    CompaniesModule, 
-    DealsModule, 
-    TasksModule, 
-    ActivitiesModule
+    HealthModule,
+    ContactsModule,
+    CompaniesModule,
+    DealsModule,
+    TasksModule,
+    ActivitiesModule,
+    UsersModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

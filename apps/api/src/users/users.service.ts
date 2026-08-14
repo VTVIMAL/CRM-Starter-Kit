@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma, Role } from "@prisma/client";
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from "../prisma/prisma.service";
+import { CreateUserDto } from "./dto/create-user.dto";
 
 type CreateUserParams = {
     email: string;
@@ -11,23 +13,24 @@ type CreateUserParams = {
 @Injectable()
 export class UsersService {
     constructor(private readonly prisma: PrismaService) {}
-
-    async findAll() {
-        return this.prisma.user.findMany({
-            orderBy: {
-                createdAt: 'desc',
-            },
-        });
-    }
     
-    async create({email, passwordHash, role = 'USER'}: CreateUserParams) {
+    async create(data: CreateUserDto) {
+        const passwordHash = await bcrypt.hash(data.password, 10);
+
         try {
             return await this.prisma.user.create({
                 data: {
-                    email,
+                    email: data.email,
                     passwordHash,
-                    role,
-                }
+                    role: data.role,
+                },
+                select: {
+                    id: true,
+                    email: true,
+                    role: true,
+                    createdAt: true,
+                    updatedAt: true,
+                },
             });
         } catch (error) {
             if (
@@ -38,5 +41,26 @@ export class UsersService {
 
             throw error;
         }
+    }
+
+    async findByEmail(email: string) {
+        return this.prisma.user.findUnique({
+            where: { email },
+        });
+    }
+
+    async findAll() {
+        return this.prisma.user.findMany({
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        })
     }
 }
