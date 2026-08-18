@@ -1,68 +1,79 @@
-import { 
-    Body,
-    Controller,
-    DefaultValuePipe,
-    Delete,
-    Get, 
-    Post,
-    Param, 
-    ParseIntPipe, 
-    Patch,
-    Query, 
-    UseGuards
-} from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { ContactsService } from "./contacts.service";
-import { CreateContactDto } from "./dto/create-contact.dto";
-import { UpdateContactDto } from "./dto/update-contact.dto";
+import {
+  Body,
+  Controller,
+  DefaultValuePipe,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { AuthenticatedUser } from '../auth/current-user.type';
+import { ContactsService } from './contacts.service';
+import { CreateContactDto } from './dto/create-contact.dto';
+import { UpdateContactDto } from './dto/update-contact.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('contacts')
 export class ContactsController {
-    constructor( private readonly contactsService: ContactsService ) {}
+  constructor(private readonly contactsService: ContactsService) {}
 
-    @Get()
-    findAll(
-        @Query('q') q?: string, 
-        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page? : number, // if no page found use 1
-        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit?: number, // if no limit found use 10
-        @Query('ownerId') ownerId?: string,
-        @Query('companyId') companyId?: string,
-    ) {
-        // Read query parameter from the URL
-        return this.contactsService.findAll({
-            q, 
-            page, 
-            limit,
-            ownerId: ownerId ? Number(ownerId) : undefined,
-            companyId: companyId ? Number(companyId) : undefined,
-        });
-    }
+  @Get()
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('q') q?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit?: number,
+    @Query('ownerId') ownerId?: string,
+    @Query('companyId') companyId?: string,
+  ) {
+    return this.contactsService.findAll({
+      q,
+      page,
+      limit,
+      ownerId: ownerId ? Number(ownerId) : user.id,
+      companyId: companyId ? Number(companyId) : undefined,
+    });
+  }
 
-    //  CONTROLLER receives the string from the URL
-    @Get(':id')
-    // Route params comes as strings so we need to convert them.
-    // NestJS turns the string "123" into the number 123 right here.
-    findOne(@Param("id", ParseIntPipe) id: number){
-        // CONTROLLER passes a clean number to the service
-        return this.contactsService.findOne(id);
-    }
+  @Get(':id')
+  findOne(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.contactsService.findOne(id);
+  }
 
-    @Post()
-    create(@Body() body: CreateContactDto){
-        return this.contactsService.create(body)
-    }
+  @Post()
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: CreateContactDto,
+  ) {
+    return this.contactsService.create({
+      ...body,
+      ownedById: body.ownedById ?? user.id,
+    });
+  }
 
-    @Patch(':id')
-    update(
-        @Param('id', ParseIntPipe) id: number,
-        @Body() body: UpdateContactDto,
-    ) {
-        return this.contactsService.update(id, body);
-    }
+  @Patch(':id')
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateContactDto,
+  ) {
+    return this.contactsService.update(id, body);
+  }
 
-    @Delete(':id')
-    remove(@Param('id', ParseIntPipe) id: number) {
-        return this.contactsService.remove(id);
-    }
+  @Delete(':id')
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.contactsService.remove(id);
+  }
 }
