@@ -9,18 +9,26 @@ import {
     Patch,
     Post,
     Query,
+    UseGuards,
   } from '@nestjs/common';
-  import { DealStage } from '@prisma/client';
-  import { DealsService } from './deals.service';
+import { DealStage, Role } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { AuthenticatedUser } from '../auth/current-user.type';
+import { DealsService } from './deals.service';
 import { CreateDealDto } from './dto/create-deal.dto';
 import { UpdateDealDto } from './dto/update-deal.dto';
 
-  @Controller('deals')
+@UseGuards(JwtAuthGuard, RolesGuard) 
+@Controller('deals')
   export class DealsController {
     constructor(private readonly dealsService: DealsService) {}
 
     @Get()
     findAll(
+        @CurrentUser() user: AuthenticatedUser,
         @Query('q') q?: string,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit?: number,
@@ -37,29 +45,41 @@ import { UpdateDealDto } from './dto/update-deal.dto';
             companyId: companyId ? Number(companyId) : undefined,
             contactId: contactId ? Number(contactId) : undefined,
             stage,
+            currentUser: user,
         });
     }
 
     @Get(':id')
-    findOne(@Param('id', ParseIntPipe) id: number) {
-        return this.dealsService.findOne(id);
+    findOne(
+        @CurrentUser() user: AuthenticatedUser,
+        @Param('id', ParseIntPipe) id: number
+    ) {
+        return this.dealsService.findOne(id, user);
     }
 
     @Post()
-    create(@Body() body: CreateDealDto) {
-        return this.dealsService.create(body);
+    create(
+        @CurrentUser() user: AuthenticatedUser,
+        @Body() body: CreateDealDto
+    ) {
+        return this.dealsService.create({
+            ...body,
+            ownedById: user.role === Role.ADMIN && body.ownedById ? body.ownedById : user.id,
+        });
     }
 
     @Patch(':id')
     update(
+        @CurrentUser() user: AuthenticatedUser,
         @Param('id', ParseIntPipe) id: number,
         @Body() body: UpdateDealDto,
     ) {
-        return this.dealsService.update(id, body);
+        return this.dealsService.update(id, body, user);
     }
 
-    // @Delete(':id')
-    // remove(@Param('id', ParseIntPipe) id:number) {
-    //     return this.dealsService.remove(id);
-    // }
+    @Delete(':id')
+    @Roles(Role.ADMIN)
+    remove(@Param('id', ParseIntPipe) id:number) {
+        return this.dealsService.remove(id);
+    }
   }

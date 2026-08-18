@@ -1,10 +1,12 @@
 import {
     BadRequestException,
+    ForbiddenException,
     Injectable,
     NotFoundException,
   } from '@nestjs/common';
-  import { Prisma, DealStage } from '@prisma/client';
+  import { Prisma, DealStage, Role } from '@prisma/client';
   import { PrismaService } from '../prisma/prisma.service';
+  import { AuthenticatedUser } from '../auth/current-user.type';
   
   type FindAllDealsParams = {
     q?: string;
@@ -14,6 +16,7 @@ import {
     companyId?: number;
     contactId?: number;
     stage?: DealStage;
+    currentUser: AuthenticatedUser;
   };
   
   @Injectable()
@@ -28,6 +31,7 @@ import {
       companyId,
       contactId,
       stage,
+      currentUser,
     }: FindAllDealsParams) {
       const search = q?.trim();
       const skip = (page - 1) * limit;
@@ -51,10 +55,6 @@ import {
         ];
       }
   
-      if (ownerId !== undefined) {
-        where.ownedById = ownerId;
-      }
-  
       if (companyId !== undefined) {
         where.companyId = companyId;
       }
@@ -65,6 +65,14 @@ import {
   
       if (stage !== undefined) {
         where.stage = stage;
+      }
+
+      if (currentUser.role === Role.ADMIN) {
+        if (ownerId !== undefined) {
+          where.ownedById = ownerId;
+        }
+      } else {
+        where.ownedById = currentUser.id;
       }
   
       const data = await this.prisma.deal.findMany({
@@ -100,7 +108,7 @@ import {
       };
     }
   
-    async findOne(id: number) {
+    async findOne(id: number, currentUser: AuthenticatedUser) {
       const deal = await this.prisma.deal.findUnique({
         where: { id },
         include: {
@@ -120,6 +128,10 @@ import {
   
       if (!deal) {
         throw new NotFoundException(`Deal with id ${id} not found`);
+      }
+
+      if (currentUser.role !== Role.ADMIN && deal.ownedById !== currentUser.id) {
+        throw new ForbiddenException('You are not allowed to access this deal.');
       }
   
       return deal;
@@ -187,7 +199,24 @@ import {
             companyId?: number | null;
             contactId?: number | null;
         },
+        currentUser: AuthenticatedUser,
     ) {
+
+      const existingDeal = await this.prisma.deal.findUnique({
+        where: { id },
+      });
+
+      if (!existingDeal) {
+        throw new NotFoundException(`Deal with id ${id} not found.`)
+      }
+
+      if (
+        currentUser.role !== Role.ADMIN &&
+        existingDeal.ownedById !== currentUser.id
+      ) {
+        throw new ForbiddenException('You are not allowed to update this deal.');
+      }
+
         try {
             return await this.prisma.deal.update({
                 where: { id },
@@ -202,7 +231,7 @@ import {
                             : data.expectedCloseDate
                                 ? new Date(data.expectedCloseDate)
                                 : undefined,
-                    ownedById: data.ownedById,
+                    ownedById: currentUser.role === Role.ADMIN ? data.ownedById: undefined,
                     companyId: data.companyId,
                     contactId: data.contactId,
                 },
@@ -219,13 +248,7 @@ import {
                 },
             });
         } catch (error) {
-            if (
-                error instanceof Prisma.PrismaClientKnownRequestError &&
-                error.code === 'P2025'
-            ) {
-                throw new NotFoundException(`Deal with ${id} not found`);
-            }
-
+            
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError &&
                 error.code === 'P2003'
@@ -238,19 +261,19 @@ import {
         }
     }
 
-    // async remove(id: number) {
-    //     try {
-    //         return await this.prisma.deal.delete({
-    //             where: {id},
-    //         });
-    //     } catch (error) {
-    //         if (
-    //             error instanceof Prisma.PrismaClientKnownRequestError &&
-    //             error.code === 'P2025'
-    //         ) {
-    //             throw new NotFoundException(`Deal with id ${id} not found`);
-    //         }
-    //         throw error;
-    //     }
-    // }
+    async remove(id: number) {
+        try {
+            return await this.prisma.deal.delete({
+                where: {id},
+            });
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2025'
+            ) {
+                throw new NotFoundException(`Deal with id ${id} not found`);
+            }
+            throw error;
+        }
+    }
   }
