@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma, Role } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { AuthenticatedUser } from "../auth/current-user.type";
 
 
 type FindAllCompaniesParams = {
@@ -8,6 +9,7 @@ type FindAllCompaniesParams = {
     page?: number;
     limit?: number;
     ownerId?: number;
+    currentUser: AuthenticatedUser;
 }
 
 @Injectable()
@@ -19,6 +21,7 @@ export class CompaniesService {
         page = 1,
         limit = 10,
         ownerId,
+        currentUser,
     }: FindAllCompaniesParams) {
         const search = q?.trim();
         const skip = (page - 1) * limit;
@@ -48,8 +51,12 @@ export class CompaniesService {
             ];
         }
 
-        if (ownerId !== undefined) {
-            where.ownedById = ownerId;
+        if (currentUser.role == Role.ADMIN) {
+            if(ownerId !== undefined) {
+                where.ownedById = ownerId;
+            }
+        } else {
+            where.ownedById = currentUser.id;
         }
 
         const data = await this.prisma.company.findMany({
@@ -83,7 +90,7 @@ export class CompaniesService {
         };
     }
 
-    async findOne(id: number) {
+    async findOne(id: number, currentUser: AuthenticatedUser) {
         const company = await this.prisma.company.findUnique({
             where: {id},
             include: {
@@ -100,6 +107,13 @@ export class CompaniesService {
 
         if (!company) {
             throw new NotFoundException(`Company with id ${id} not found`);
+        }
+
+        if (
+            currentUser.role !== Role.ADMIN &&
+            company.ownedById !== currentUser.id
+        ) {
+            throw new ForbiddenException('You are not allowed to access this company.');
         }
 
         return company;
@@ -147,11 +161,32 @@ export class CompaniesService {
             size?: number | null;
             ownedById?: number;
         },
+        currentUser: AuthenticatedUser,
     ) {
+        const existingCompany = await this.prisma.company.findUnique({
+            where: {id},
+        });
+
+        if(!existingCompany) {
+            throw new NotFoundException(`Company with id ${id} not found`);
+        }
+
+        if (
+            currentUser.role !== Role.ADMIN &&
+            existingCompany.ownedById !== currentUser.id
+        ) {
+            throw new ForbiddenException('You are not allowed to update this company.')
+        }
+
         try {
             return await this.prisma.company.update({
                 where: {id},
-                data,
+                data: currentUser.role == Role.ADMIN
+                    ? data
+                    : {
+                        ...data,
+                        ownedById: undefined,
+                    },
                 include: {
                     ownedBy: {
                         select: {
@@ -163,12 +198,6 @@ export class CompaniesService {
                 },
             });
         } catch (error) {
-            if (
-                error instanceof Prisma.PrismaClientKnownRequestError &&
-                error.code === 'P2025'
-            ) {
-                throw new NotFoundException(`Company with id ${id} not found`);
-            }
 
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -182,5 +211,22 @@ export class CompaniesService {
             throw error;
         }
     }
+
+    async remove(id: number) {
+        try {
+            return await this.prisma.company.delete({
+                where: { id },
+            });
+        } catch (error) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2025'
+            ) {
+                throw new NotFoundException(`Company with id ${id} not found`)
+            }
+
+            throw error;
+        }
+    } 
 }
 
