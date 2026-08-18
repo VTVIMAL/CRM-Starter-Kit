@@ -1,10 +1,12 @@
 import {
     BadRequestException,
+    ForbiddenException,
     Injectable,
     NotFoundException,
   } from '@nestjs/common';
-  import { Prisma } from '@prisma/client';
+  import { Prisma, Role } from '@prisma/client';
   import { PrismaService } from '../prisma/prisma.service';
+import { AuthenticatedUser } from '../auth/current-user.type';
   
   type FindAllContactsParams = {
     q?: string;
@@ -12,6 +14,7 @@ import {
     limit?: number;
     ownerId?: number;
     companyId?: number;
+    currentUser: AuthenticatedUser;
   };
   
   type CreateContactParams = {
@@ -42,6 +45,7 @@ import {
       limit = 10,
       ownerId,
       companyId,
+      currentUser,
     }: FindAllContactsParams) {
       const search = q?.trim();
       const skip = (page - 1) * limit;
@@ -71,13 +75,17 @@ import {
         ];
       }
   
-      if (ownerId !== undefined) {
-        where.ownedById = ownerId;
-      }
-  
       if (companyId !== undefined) {
         where.companyId = companyId;
       }
+      if (currentUser.role === Role.ADMIN) {
+        if(ownerId !== undefined) {
+          where.ownedById = ownerId;
+        } 
+      } else {
+        // non-admin users are always limited to their own contacts
+       where.ownedById = currentUser.id;
+     }
   
       const data = await this.prisma.contact.findMany({
         where,
@@ -101,13 +109,20 @@ import {
       };
     }
   
-    async findOne(id: number) {
+    async findOne(id: number, currentUser: AuthenticatedUser) {
       const contact = await this.prisma.contact.findUnique({
         where: { id },
       });
   
       if (!contact) {
         throw new NotFoundException(`Contact with id ${id} not found`);
+      }
+
+      if (
+        currentUser.role !== Role.ADMIN &&
+        contact.ownedById !== currentUser.id
+      ) {
+        throw new ForbiddenException('You are not allowed to access this content.');
       }
   
       return contact;
@@ -157,18 +172,36 @@ import {
             ownedById?: number;
             companyId?: number | null;
         },
+        currentUser: AuthenticatedUser,
     ) {
+
+      const existingContact = await this.prisma.contact.findUnique({
+        where: {id},
+      });
+
+      if (!existingContact) {
+        throw new NotFoundException(`Contact with id ${id} not found`);
+      }
+
+      if (
+        currentUser.role !== Role.ADMIN && 
+        existingContact.ownedById !== currentUser.id
+      ) {
+        throw new ForbiddenException('You are not allowed to update this contact.')
+      }
+
         try {
             return await this.prisma.contact.update({
                 where: {id},
-                data,
+                data: 
+                  currentUser.role === Role.ADMIN
+                    ? data
+                    : {
+                      ...data,
+                      ownedById: undefined,
+                    },
             });
         } catch (error) {
-            if (
-                error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025'
-            ) {
-                throw new NotFoundException(`Contact with id ${id} not found`);
-            }
 
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003'
