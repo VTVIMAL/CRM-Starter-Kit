@@ -3,10 +3,11 @@ import {
     ForbiddenException,
     Injectable,
     NotFoundException,
-  } from '@nestjs/common';
-  import { Prisma, Role } from '@prisma/client';
-  import { PrismaService } from '../prisma/prisma.service';
+} from '@nestjs/common';
+import { Prisma, Role } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/current-user.type';
+import { AuthorizationService } from '../auth/authorization.service';
   
   type FindAllContactsParams = {
     q?: string;
@@ -37,7 +38,10 @@ import { AuthenticatedUser } from '../auth/current-user.type';
   
   @Injectable()
   export class ContactsService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+      private readonly prisma: PrismaService,
+      private readonly authorizationService: AuthorizationService,
+    ) {}
   
     async findAll({
       q,
@@ -183,12 +187,11 @@ import { AuthenticatedUser } from '../auth/current-user.type';
         throw new NotFoundException(`Contact with id ${id} not found`);
       }
 
-      if (
-        currentUser.role !== Role.ADMIN && 
-        existingContact.ownedById !== currentUser.id
-      ) {
-        throw new ForbiddenException('You are not allowed to update this contact.')
-      }
+      this.authorizationService.ensureOwnerResourceAccess(
+        currentUser,
+        existingContact.ownedById,
+        'You are not allowed to update this contact.',
+      )
 
         try {
             return await this.prisma.contact.update({
