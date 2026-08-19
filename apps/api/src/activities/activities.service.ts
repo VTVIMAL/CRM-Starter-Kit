@@ -1,10 +1,12 @@
 import {
-    BadRequestException,
-    Injectable,
-    NotFoundException,
-  } from '@nestjs/common';
-  import { ActivityType, Prisma } from '@prisma/client';
-  import { PrismaService } from '../prisma/prisma.service';
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ActivityType, Prisma, Role } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuthenticatedUser } from '../auth/current-user.type';
   
   type FindAllActivitiesParams = {
     page?: number;
@@ -14,6 +16,7 @@ import {
     companyId?: number;
     dealId?: number;
     type?: ActivityType;
+    currentUser: AuthenticatedUser;
   };
   
   @Injectable()
@@ -28,14 +31,11 @@ import {
       companyId,
       dealId,
       type,
+      currentUser,
     }: FindAllActivitiesParams) {
       const skip = (page - 1) * limit;
   
       const where: Prisma.ActivityWhereInput = {};
-  
-      if (createdById !== undefined) {
-        where.createdById = createdById;
-      }
   
       if (contactId !== undefined) {
         where.contactId = contactId;
@@ -51,6 +51,14 @@ import {
   
       if (type !== undefined) {
         where.type = type;
+      }
+
+      if (currentUser.role === Role.ADMIN) {
+        if (createdById !== undefined) {
+          where.createdById = createdById;
+        }
+      } else {
+        where.createdById = currentUser.id;
       }
   
       const data = await this.prisma.activity.findMany({
@@ -87,7 +95,7 @@ import {
       };
     }
   
-    async findOne(id: number) {
+    async findOne(id: number, currentUser: AuthenticatedUser) {
       const activity = await this.prisma.activity.findUnique({
         where: { id },
         include: {
@@ -106,6 +114,13 @@ import {
   
       if (!activity) {
         throw new NotFoundException(`Activity with id ${id} not found`);
+      }
+
+      if (
+        currentUser.role !== Role.ADMIN &&
+        activity.createdById !== currentUser.id
+      ) {
+        throw new ForbiddenException('You are not allowed to access this activity.');
       }
   
       return activity;
@@ -169,7 +184,23 @@ import {
         companyId?: number | null;
         dealId?: number | null;
       },
+      currentUser: AuthenticatedUser,
     ) {
+      const existingActivity = await this.prisma.activity.findUnique({
+        where: { id },
+      });
+  
+      if (!existingActivity) {
+        throw new NotFoundException(`Activity with id ${id} not found`);
+      }
+  
+      if (
+        currentUser.role !== Role.ADMIN &&
+        existingActivity.createdById !== currentUser.id
+      ) {
+        throw new ForbiddenException('You are not allowed to update this activity.');
+      }
+  
       try {
         return await this.prisma.activity.update({
           where: { id },
@@ -177,7 +208,7 @@ import {
             type: data.type,
             subject: data.subject,
             body: data.body,
-            createdById: data.createdById,
+            createdById: currentUser.role === Role.ADMIN ? data.createdById : undefined,
             contactId: data.contactId,
             companyId: data.companyId,
             dealId: data.dealId,
@@ -198,13 +229,6 @@ import {
       } catch (error) {
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2025'
-        ) {
-          throw new NotFoundException(`Activity with id ${id} not found`);
-        }
-  
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === 'P2003'
         ) {
           throw new BadRequestException(
@@ -212,6 +236,23 @@ import {
           );
         }
   
+        throw error;
+      }
+    }
+
+    async remove(id: number) {
+      try {
+        return await this.prisma.activity.delete({
+          where: { id },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2025'
+        ) {
+          throw new NotFoundException(`Activity with id ${id} not found`)
+        }
+
         throw error;
       }
     }
