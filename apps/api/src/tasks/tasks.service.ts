@@ -1,10 +1,12 @@
 import {
     BadRequestException,
+    ForbiddenException,
     Injectable,
     NotFoundException,
   } from '@nestjs/common';
-  import { Prisma } from '@prisma/client';
+  import { Prisma, Role } from '@prisma/client';
   import { PrismaService } from '../prisma/prisma.service';
+  import { AuthenticatedUser } from '../auth/current-user.type';
 
 
 type FindAllTasksParams = {
@@ -15,6 +17,7 @@ type FindAllTasksParams = {
     companyId?: number;
     dealId?: number;
     completed?: boolean;
+    currentUser: AuthenticatedUser;
 };
 
 @Injectable()
@@ -29,14 +32,11 @@ export class TasksService {
         companyId,
         dealId,
         completed,
+        currentUser,
     }: FindAllTasksParams) {
         const skip = (page -1) * limit;
 
         const where: Prisma.TaskWhereInput = {};
-
-        if (assignedToId !== undefined) {
-            where.assignedToId = assignedToId;
-        }
 
         if (contactId !== undefined) {
             where.contactId = contactId;
@@ -52,6 +52,14 @@ export class TasksService {
 
         if (completed !== undefined) {
             where.completed = completed;
+        }
+
+        if (currentUser.role === Role.ADMIN) {
+          if (assignedToId !== undefined) {
+            where.assignedToId = assignedToId;
+          }
+        } else {
+          where.assignedToId = currentUser.id;
         }
 
         const data = await this.prisma.task.findMany({
@@ -88,7 +96,7 @@ export class TasksService {
         };
     }
 
-    async findOne(id: number) {
+    async findOne(id: number, currentUser: AuthenticatedUser) {
         const task = await this.prisma.task.findUnique({
             where: {id},
             include: {
@@ -107,6 +115,10 @@ export class TasksService {
 
         if (!task) {
             throw new NotFoundException(`Task with id ${id} not found`);
+        }
+
+        if (currentUser.role !== Role.ADMIN && task.assignedToId !== currentUser.id) {
+          throw new ForbiddenException('You are not allowed to access this task.')
         }
 
         return task;
@@ -170,7 +182,21 @@ export class TasksService {
           companyId?: number | null;
           dealId?: number | null;
         },
+        currentUser: AuthenticatedUser,
       ) {
+
+        const existingTask = await this.prisma.task.findUnique({
+          where: {id},
+        });
+
+        if (!existingTask) {
+          throw new NotFoundException(`Task with id ${id} not found`);
+        }
+
+        if (currentUser.role !== Role.ADMIN && existingTask.assignedToId !== currentUser.id) {
+          throw new ForbiddenException('You are not allowed to update this task.')
+        }
+
         try {
           return await this.prisma.task.update({
             where: { id },
@@ -183,7 +209,7 @@ export class TasksService {
                     ? new Date(data.dueDate)
                     : undefined,
               completed: data.completed,
-              assignedToId: data.assignedToId,
+              assignedToId: currentUser.role === Role.ADMIN ? data.assignedToId : undefined,
               contactId: data.contactId,
               companyId: data.companyId,
               dealId: data.dealId,
@@ -202,12 +228,6 @@ export class TasksService {
             },
           });
         } catch (error) {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2025'
-          ) {
-            throw new NotFoundException(`Task with id ${id} not found`);
-          }
     
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -220,5 +240,22 @@ export class TasksService {
     
           throw error;
         }
+    }
+
+    async remove(id: number) {
+      try {
+        return await this.prisma.task.delete({
+          where: { id },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2025'
+        ) {
+          throw new NotFoundException(`Task with id ${id} not found`);
+        }
+
+        throw error;
+      }
     }
 }
