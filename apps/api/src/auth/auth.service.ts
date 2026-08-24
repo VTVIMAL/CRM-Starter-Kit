@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
+import { AuthenticatedUser } from './current-user.type';
 import { LoginDto } from './dto/login.dto';
 
 @Injectable()
@@ -43,5 +44,15 @@ export class AuthService {
                 role: user.role,
             },
         };
+    }
+
+    async me(currentUser: AuthenticatedUser) {
+        const user = await this.usersService.findPublicById(currentUser.id);
+
+        if(!user) {
+            throw new NotFoundException('User not found.');
+        }
+
+        return user;
     }
 }

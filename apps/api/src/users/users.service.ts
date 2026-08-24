@@ -63,4 +63,17 @@ export class UsersService {
             }
         })
     }
+
+    async findPublicById(id: number) {
+        return this.prisma.user.findUnique({
+            where: {id},
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                createdAt: true,
+                updatedAt: true,
+            }
+        });
+    }
 }
