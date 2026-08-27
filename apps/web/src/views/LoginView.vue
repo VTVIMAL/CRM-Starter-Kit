@@ -9,11 +9,14 @@ const errorMessage = ref('');
 const router = useRouter();
 const auth = useAuthStore();
 
+
+const { signIn, isLoading } = useAuthStore();
+
 async function handleSubmit() {
   errorMessage.value = '';
 
   try {
-    await auth.signIn({
+    await signIn({
       email: email.value,
       password: password.value,
     });
@@ -41,8 +44,8 @@ async function handleSubmit() {
         <input id="password" v-model="password" type="password" />
       </div>
 
-      <button type="submit" :disabled="auth.isLoading">
-        {{ auth.isLoading ? 'Signing in...' : 'Login' }}
+      <button type="submit" :disabled="isLoading">
+        {{ isLoading ? 'Signing in...' : 'Login' }}
       </button>
 
       <p v-if="errorMessage">{{ errorMessage }}</p>
