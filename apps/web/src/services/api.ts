@@ -1,24 +1,24 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-export async function apiFetch(
-    path: string,
-    options: RequestInit = {},
-) {
+export async function apiFetch(path: string, options: RequestInit = {}) {
     const token = localStorage.getItem('accessToken');
 
     const response = await fetch(`${API_BASE_URL}${path}`, {
         ...options,
         headers: {
-            'Content-Type': 'application/json',
-            ...(token ? {Authorization: `Bearer ${token}`} : {}),
+            'Content-Type': 'appllication/json',
+            ...(token ? {Authorization: `Bearer ${token}` } : {}),
             ...(options.headers ?? {}),
         },
     });
 
-    if(!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.message || 'Request failed');
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+        throw new Error(
+            Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Request failed',
+        );
     }
 
-    return response.json();
+    return data;
 }
