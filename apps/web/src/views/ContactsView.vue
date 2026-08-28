@@ -17,6 +17,8 @@ const successMessage = ref('');
 const isLoading = ref(false);
 const isCreating = ref(false);
 
+const search = ref('');
+
 const firstName = ref('');
 const lastName = ref('');
 const email = ref('');
@@ -29,7 +31,12 @@ async function loadContacts() {
   errorMessage.value = '';
 
   try {
-    const result = await apiFetch('/contacts');
+    const query = search.value.trim();
+    const path = query
+        ?  `/contacts?q=${encodeURIComponent(query)}`
+        : '/contacts';
+
+    const result = await apiFetch(path);
     contacts.value = result.data;
   } catch (error) {
     errorMessage.value =
@@ -72,6 +79,10 @@ async function createContact() {
     }
 }
 
+watch(search, () => {
+    loadContacts();
+})
+
 onMounted(() => {
   loadContacts();
 });
@@ -109,6 +120,12 @@ onMounted(() => {
                 {{ isCreating ? 'Createing...' : 'Create Contact' }}
             </button>
         </form>
+    </section>
+
+    <section>
+        <h2>Search Contacts</h2>
+
+        <input v-model="search" type="text" placeholder="Search by name or email"/>
     </section>
 
     <p v-if="successMessage">{{ successMessage }}</p>
