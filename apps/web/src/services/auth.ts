@@ -6,6 +6,8 @@ export type LoginPayload = {
 };
 
 export function login(payload: LoginPayload) {
+  console.log('login payload sent to API =', payload)
+
   return apiFetch('/auth/login', {
     method: 'POST',
     body: JSON.stringify(payload),

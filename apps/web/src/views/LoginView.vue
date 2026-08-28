@@ -7,9 +7,6 @@ const email = ref('');
 const password = ref('');
 const errorMessage = ref('');
 const router = useRouter();
-const auth = useAuthStore();
-
-
 const { signIn, isLoading } = useAuthStore();
 
 async function handleSubmit() {
@@ -21,7 +18,7 @@ async function handleSubmit() {
       password: password.value,
     });
 
-    router.push('/');
+    router.push('/contacts');
   } catch (error) {
     errorMessage.value =
       error instanceof Error ? error.message : 'Login failed';
