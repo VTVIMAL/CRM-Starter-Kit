@@ -1,0 +1,204 @@
+datasource db {
+    provider = "postgresql"
+
+}
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+enum Role {
+    ADMIN
+    USER
+}
+
+enum DealStage {
+    LEAD 
+    QUALIFIED 
+    PROPOSAL 
+    NEGOTIATION 
+    WON 
+    LOST
+}
+
+enum ActivityType {
+    CALL 
+    EMAIL 
+    MEETING 
+    NOTE
+}
+
+enum CustomFieldDataType {
+    TEXT
+    NUMBER
+    DATE
+    BOOLEAN 
+    SELECT 
+    MULTI_SELECT
+}
+
+enum CustomFieldTargetEntity {
+    CONTACT 
+    COMPANY 
+    DEAL
+}
+
+
+model User {
+    id Int @id @default(autoincrement())
+    email String @unique
+    passwordHash String
+    role Role @default(USER)
+    contacts Contact[] @relation("UserOwnedContacts")
+    companies Company[] @relation("UserOwnedCompanies")
+    deals Deal[] @relation("UserOwnedDeals")
+    tasks Task[] @relation("UserAssignedTasks")
+    activities Activity[] @relation("UserCreatedActivities")
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+} 
+
+
+model Company {
+    id Int @id @default(autoincrement())
+    name String
+    domain String?
+    industry String 
+    size Int?
+    ownedById Int
+    ownedBy User @relation("UserOwnedCompanies", fields: [ownedById], references: [id], onDelete: Restrict)
+    contacts Contact[] @relation("CompanyContacts")
+    deals Deal[] @relation("CompanyDeals")
+    tasks Task[] @relation("CompanyTasks")
+    activities Activity[] @relation("CompanyActivities")
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+
+    @@index([ownedById])
+    @@index([domain])
+}
+
+
+model Contact {
+    id Int @id @default(autoincrement())
+    firstName String
+    lastName String
+    email String
+    phone String?
+    tags Json?
+    ownedById Int
+    ownedBy User @relation("UserOwnedContacts", fields: [ownedById], references: [id], onDelete: Restrict)
+    companyId Int?
+    company Company? @relation("CompanyContacts", fields: [companyId], references: [id], onDelete: SetNull)
+    deals Deal[] @relation("ContactDeals")
+    tasks Task[] @relation("ContactTasks")
+    activities Activity[] @relation("ContactActivities")
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+
+    @@index([ownedById])
+    @@index([companyId])
+    @@index([email])
+
+
+}
+
+
+model Deal {
+    id Int @id @default(autoincrement())
+    title String
+    value Decimal
+    currency String
+    stage DealStage @default(LEAD)
+    expectedCloseDate DateTime?
+    ownedById Int
+    ownedBy User @relation("UserOwnedDeals", fields: [ownedById], references: [id], onDelete: Restrict)
+    companyId Int?
+    company Company? @relation("CompanyDeals", fields: [companyId], references: [id], onDelete: SetNull)
+    contactId Int?
+    contact Contact? @relation("ContactDeals", fields: [contactId], references: [id], onDelete: SetNull)
+    tasks Task[] @relation("DealTasks")
+    activities Activity[] @relation("DealActivities")
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([ownedById])
+    @@index([companyId])
+    @@index([contactId])
+}
+
+model Activity {
+    id Int @id @default(autoincrement())
+    type ActivityType
+    body String?
+    subject String
+    createdById Int
+    createdBy User @relation("UserCreatedActivities", fields: [createdById], references: [id], onDelete: Restrict)
+    contactId Int?
+    contact Contact? @relation("ContactActivities", fields: [contactId], references: [id], onDelete: SetNull)
+    companyId Int?
+    company Company? @relation("CompanyActivities", fields: [companyId], references: [id], onDelete: SetNull)
+    dealId Int?
+    deal Deal? @relation("DealActivities", fields: [dealId], references: [id], onDelete: SetNull)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([createdById])
+    @@index([companyId])
+    @@index([contactId])
+    @@index([dealId])
+
+}
+
+
+model Task {
+    id Int @id @default(autoincrement())
+    title String
+    dueDate DateTime?
+    completed Boolean @default(false)
+    assignedToId Int
+    assignedTo User @relation("UserAssignedTasks", fields: [assignedToId], references: [id], onDelete: Restrict)
+    contactId Int?
+    contact Contact? @relation("ContactTasks", fields: [contactId], references: [id], onDelete: SetNull)
+    companyId Int?
+    company Company? @relation("CompanyTasks", fields: [companyId], references: [id], onDelete: SetNull)
+    dealId Int?
+    deal Deal? @relation("DealTasks", fields: [dealId], references: [id], onDelete: SetNull)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([assignedToId])
+    @@index([companyId])
+    @@index([contactId])
+    @@index([dealId])
+}
+
+model CustomFieldDefinition {
+    id Int @id @default(autoincrement())
+    name String
+    label String
+    dataType CustomFieldDataType
+    targetEntity CustomFieldTargetEntity
+    options Json?
+    values CustomFieldValue[]
+    createdAt DateTime @default(now())
+
+    @@index([targetEntity])
+    @@unique([targetEntity, name])
+}
+
+model CustomFieldValue {
+    id Int @id @default(autoincrement())
+    fieldDefinitionId Int
+    fieldDefinition CustomFieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+    entityId String
+    value String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+ @@index([entityId])
+ @@index([fieldDefinitionId])
+ @@unique([fieldDefinitionId, entityId])
+}
